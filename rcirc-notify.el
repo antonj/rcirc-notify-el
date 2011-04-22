@@ -31,17 +31,27 @@ same person.")
   "If t makes notifications 'stick' and not go away until clicked.")
 
 (defun rcirc-send-notification (title message)
-  (cond ((and (or (eq window-system 'mac)
-                  (eq window-system 'ns))
-              (executable-find "growlnotify"))
-         (start-process "rcirc-notify" nil "growlnotify"
-                        "-t" title "-m" message "-a" "Emacs.app" (if rcirc-notify-sticky "-s" "")))
-        ((and (eq window-system 'x)
-              (executable-find "notify-send"))
-         (start-process "rcirc-notify" nil
-                        ;; 8640000 ms = 1 day
-                        "notify-send" "-u" "normal" "-i" "gtk-dialog-info"
-                        "-t" (if rcirc-notify-sticky "0" "8640000") title message))))
+  (cond
+   ((and (or (eq window-system 'mac)
+             (eq window-system 'ns))
+         (executable-find "growlnotify"))
+    (start-process "rcirc-notify" nil "growlnotify"
+                   "-t" title "-m" message "-a" "Emacs.app" (if rcirc-notify-sticky "-s" "")))
+   ((and (eq window-system 'x)
+         (executable-find "notify-send"))
+    (start-process "rcirc-notify" nil
+                   ;; 8640000 ms = 1 day
+                   "notify-send" "-u" "normal" "-i" "gtk-dialog-info"
+                   "-t" (if rcirc-notify-sticky "0" "8640000") title message))
+   ((executable-find "say")
+    (start-process "page-me" nil "say" (concat title " " message)))
+   (t (error "No method available to page you.")))
+  (message (concat  title ": " message "\n"))
+  ;; Log message to buffer irc-log
+  (save-current-buffer
+    (set-buffer (get-buffer-create "*irc-log*"))
+    (goto-char (point-max))
+    (insert title ": " message "\n")))
 
 (defun rcirc-notify (sender text &optional target)
   (setq target (or target "private message"))
